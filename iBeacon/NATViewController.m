@@ -56,8 +56,8 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
     [self.view addSubview:button2];
 
     UIButton *button3 = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    [button3 setTitle:@"location" forState:UIControlStateNormal];
-    [button3 addTarget:self action:@selector(location) forControlEvents:UIControlEventTouchUpInside];
+    [button3 setTitle:@"iBeacon" forState:UIControlStateNormal];
+    [button3 addTarget:self action:@selector(iBeacon) forControlEvents:UIControlEventTouchUpInside];
     [button3 sizeToFit];
     button3.center = (CGPoint) {
         .x = 240,
@@ -69,13 +69,7 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
 
 - (void)configure
 {
-
     self.proximityUUID = [[NSUUID alloc] initWithUUIDString:UUIDKey];
-
-    self.region = [[CLBeaconRegion alloc] initWithProximityUUID:self.proximityUUID identifier:@"test"];
-    self.region.notifyOnEntry = YES;
-    self.region.notifyOnExit = YES;
-    self.region.notifyEntryStateOnDisplay = YES;
 
 }
 
@@ -94,9 +88,14 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
                               queue:nil options:nil];
 }
 
-- (void)location
+- (void)iBeacon
 {
     [self resetManagers];
+    self.region = [[CLBeaconRegion alloc] initWithProximityUUID:self.proximityUUID identifier:@"test"];
+    self.region.notifyOnEntry = YES;
+    self.region.notifyOnExit = YES;
+    self.region.notifyEntryStateOnDisplay = YES;
+
     self.locationManager = [[CLLocationManager alloc] init];
     self.locationManager.delegate = self;
     [self.locationManager startMonitoringForRegion:self.region];
@@ -122,8 +121,10 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
 - (void)locationManager:(CLLocationManager *)manager didRangeBeacons:(NSArray *)beacons inRegion:(CLBeaconRegion *)region
 {
     CLBeacon *beacon = [beacons firstObject];
-    [self showAlertView:[NSString stringWithFormat:@"%s", __func__]
-                message:[beacon description]];
+    if (beacon) {
+        [self showAlertView:[NSString stringWithFormat:@"%s", __func__]
+                    message:[beacon.proximityUUID description]];
+    }
 }
 
 - (void)locationManager:(CLLocationManager *)manager didExitRegion:(CLRegion *)region
