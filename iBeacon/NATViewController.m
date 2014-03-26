@@ -36,7 +36,7 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
 - (void)renderButtons
 {
     UIButton *button1 = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    [button1 setTitle:@"peripheral" forState:UIControlStateNormal];
+    [button1 setTitle:@"bluetooth - peripheral" forState:UIControlStateNormal];
     [button1 addTarget:self action:@selector(peripheral) forControlEvents:UIControlEventTouchUpInside];
     [button1 sizeToFit];
     button1.center = (CGPoint) {
@@ -46,7 +46,7 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
     [self.view addSubview:button1];
 
     UIButton *button2 = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    [button2 setTitle:@"central" forState:UIControlStateNormal];
+    [button2 setTitle:@"bluetooth- central" forState:UIControlStateNormal];
     [button2 addTarget:self action:@selector(central) forControlEvents:UIControlEventTouchUpInside];
     [button2 sizeToFit];
     button2.center = (CGPoint) {
@@ -56,26 +56,30 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
     [self.view addSubview:button2];
 
     UIButton *button3 = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    [button3 setTitle:@"location" forState:UIControlStateNormal];
-    [button3 addTarget:self action:@selector(location) forControlEvents:UIControlEventTouchUpInside];
+    [button3 setTitle:@"iBeacon - peripheral" forState:UIControlStateNormal];
+    [button3 addTarget:self action:@selector(peripheral) forControlEvents:UIControlEventTouchUpInside];
     [button3 sizeToFit];
     button3.center = (CGPoint) {
         .x = 240,
         .y = 240
     };
     [self.view addSubview:button3];
+
+    UIButton *button4 = [UIButton buttonWithType:UIButtonTypeRoundedRect];
+    [button4 setTitle:@"iBeacon - central" forState:UIControlStateNormal];
+    [button4 addTarget:self action:@selector(iBeacon) forControlEvents:UIControlEventTouchUpInside];
+    [button4 sizeToFit];
+    button4.center = (CGPoint) {
+        .x = 240,
+        .y = 320
+    };
+    [self.view addSubview:button4];
 }
 
 
 - (void)configure
 {
-
     self.proximityUUID = [[NSUUID alloc] initWithUUIDString:UUIDKey];
-
-    self.region = [[CLBeaconRegion alloc] initWithProximityUUID:self.proximityUUID identifier:@"test"];
-    self.region.notifyOnEntry = YES;
-    self.region.notifyOnExit = YES;
-    self.region.notifyEntryStateOnDisplay = YES;
 
 }
 
@@ -94,13 +98,18 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
                               queue:nil options:nil];
 }
 
-- (void)location
+- (void)iBeacon
 {
     [self resetManagers];
+    self.region = [[CLBeaconRegion alloc] initWithProximityUUID:self.proximityUUID
+                                                     identifier:@"net.test"];
+    self.region.notifyOnEntry = YES;
+    self.region.notifyOnExit = YES;
+    self.region.notifyEntryStateOnDisplay = YES;
+
     self.locationManager = [[CLLocationManager alloc] init];
     self.locationManager.delegate = self;
     [self.locationManager startMonitoringForRegion:self.region];
-    [self.locationManager startRangingBeaconsInRegion:self.region];
 }
 
 - (void)resetManagers
@@ -114,7 +123,7 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
 
 - (void)locationManager:(CLLocationManager *)manager didEnterRegion:(CLRegion *)region
 {
-    [manager startMonitoringForRegion:region];
+    [manager startRangingBeaconsInRegion:(CLBeaconRegion *)region];
     [self showAlertView:[NSString stringWithFormat:@"%s", __func__]
                 message:[region description]];
 }
@@ -122,12 +131,19 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
 - (void)locationManager:(CLLocationManager *)manager didRangeBeacons:(NSArray *)beacons inRegion:(CLBeaconRegion *)region
 {
     CLBeacon *beacon = [beacons firstObject];
-    [self showAlertView:[NSString stringWithFormat:@"%s", __func__]
-                message:[beacon description]];
+    if (beacon) {
+        NSString *message = [NSString stringWithFormat:@"major:%@, minor:%@, accuracy:%f, rssi:%d",
+                             beacon.major,
+                             beacon.minor,
+                             beacon.accuracy,
+                             beacon.rssi];
+        [self sendLocalNotificationForMessage:message];
+    }
 }
 
 - (void)locationManager:(CLLocationManager *)manager didExitRegion:(CLRegion *)region
 {
+    [manager stopRangingBeaconsInRegion:(CLBeaconRegion *)region];
     [self showAlertView:[NSString stringWithFormat:@"%s", __func__]
                 message:[region description]];
 }
@@ -170,7 +186,11 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
 {
     switch (peripheralManager.state) {
         case CBPeripheralManagerStatePoweredOn: {
-            NSDictionary *dictionary = [[self.region peripheralDataWithMeasuredPower:nil] copy];
+            CLBeaconRegion *region = [[CLBeaconRegion alloc] initWithProximityUUID:self.proximityUUID
+                                                                             major:1
+                                                                             minor:2
+                                                                        identifier:@"net.test"];
+            NSDictionary *dictionary = [[region peripheralDataWithMeasuredPower:nil] copy];
             [self.peripheralManager startAdvertising:dictionary];
         }
             break;
@@ -178,6 +198,7 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
             break;
     }
 }
+
 
 - (void)showAlertView:(NSString *)title message:(NSString *)message
 {
@@ -189,4 +210,12 @@ NSString *UUIDKey = @"9CB2AA11-09E2-47D2-AC78-147A35DE6D61";
     [alertView show];
 }
 
+- (void)sendLocalNotificationForMessage:(NSString *)message
+{
+    UILocalNotification *localNotification = [UILocalNotification new];
+    localNotification.alertBody = message;
+    localNotification.fireDate = [NSDate date];
+    localNotification.soundName = UILocalNotificationDefaultSoundName;
+    [[UIApplication sharedApplication] scheduleLocalNotification:localNotification];
+}
 @end
